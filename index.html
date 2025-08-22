@@ -1,74 +1,103 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Фото-рулетка с тортиком</title>
-  <style>
-    body {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      background: #111;
-      font-family: sans-serif;
-      color: white;
-    }
-    .roulette {
-      width: 300px;
-      height: 300px;
-      border-radius: 50%;
-      border: 5px solid #fff;
-      position: relative;
-      overflow: hidden;
-      transform-origin: 50% 50%;
-      margin: 20px;
-    }
-    .roulette img {
-      position: absolute;
-      width: 150px;
-      height: 150px;
-      top: 50%;
-      left: 50%;
-      transform-origin: 0 0;
-      border-radius: 10%;
-      object-fit: cover;
-    }
-    button, label {
-      padding: 12px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 10px;
-      background: #ff4444;
-      color: #fff;
-      margin: 5px;
-      cursor: pointer;
-    }
-    input[type="file"] { display: none; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Адаптивная фото-рулетка</title>
+<style>
+body {
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  margin:0;
+  background:#111;
+  font-family:sans-serif;
+  color:white;
+}
 
-    #overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.95);
-      justify-content: center;
-      align-items: center;
-    }
-    #overlay img {
-      max-width: 90%;
-      max-height: 90%;
-      border-radius: 20px;
-    }
-  </style>
+.roulette-container {
+  position: relative;
+  width: 80vw;
+  max-width: 400px;
+  aspect-ratio: 1/1;
+}
+
+.roulette {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 5px solid #fff;
+  position: relative;
+  overflow: hidden; /* Важный момент: чтобы картинки не вылезали */
+
+}
+
+.roulette img {
+  position: absolute;
+  width: 25%; /* Размер фото относительно круга */
+  aspect-ratio: 1/1;
+  border-radius: 50%;
+  object-fit: cover;
+  top: 50%;
+  left: 50%;
+  transform-origin: center; /* Центр вращения */
+  
+}
+
+#pointer {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%) rotate(-90deg);
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 25px solid #ff4444;
+  z-index: 10;
+}
+
+button, label {
+  padding: 12px 30px;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  background: #ff4444;
+  color: #fff;
+  margin: 35px;
+  cursor: pointer;
+}
+
+input[type="file"] { display: none; }
+
+#overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.95);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+#overlay img {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 20px;
+}
+</style>
 </head>
 <body>
 
-<h2>Фото-рулетка 🎡</h2>
 <label for="fileInput">Выбрать фото</label>
 <input type="file" id="fileInput" accept="image/*" multiple>
-<div class="roulette" id="roulette"></div>
+
+<div class="roulette-container">
+  <div class="roulette" id="roulette"></div>
+  <div id="pointer"></div>
+</div>
+
 <button onclick="spin()">Крутить!</button>
 
 <div id="overlay" onclick="closeOverlay()">
@@ -79,22 +108,19 @@
 const fileInput = document.getElementById("fileInput");
 const roulette = document.getElementById("roulette");
 let images = [];
-let currentRotation = 0;
+let rotationOffset = 0;
 
 fileInput.addEventListener("change", (event) => {
   const files = Array.from(event.target.files);
   images = [];
   roulette.innerHTML = "";
   let loadedCount = 0;
-
-  files.forEach((file, i) => {
+  files.forEach((file,i) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       images[i] = e.target.result;
       loadedCount++;
-      if(loadedCount === files.length) {
-        updateRoulette();
-      }
+      if(loadedCount===files.length) updateRoulette();
     };
     reader.readAsDataURL(file);
   });
@@ -103,29 +129,79 @@ fileInput.addEventListener("change", (event) => {
 function updateRoulette() {
   roulette.innerHTML = "";
   const n = images.length;
-  images.forEach((src,i) => {
+  if (n === 0) return;
+
+  const containerRadius = roulette.offsetWidth / 2;
+  const imgSize = roulette.offsetWidth * 0.25 / 2; // половина ширины изображения
+  const radius = containerRadius - imgSize - 10;    // отступ от края
+
+  images.forEach((src, i) => {
+    const angle = (360 / n) * i;
     const img = document.createElement("img");
     img.src = src;
-    const angle = (360/n) * i;
-    img.style.transform = `rotate(${angle}deg) translateY(-50%) rotate(-${angle}deg)`;
+
+    // Трансформация с корректным центром
+    img.style.transform = `
+      rotate(${angle + rotationOffset}deg)
+      translate(${radius}px)
+      rotate(-${angle + rotationOffset}deg)
+      translate(-50%, -50%)
+    `;
+
     roulette.appendChild(img);
   });
 }
 
-function spin() {
-  if(images.length === 0) return;
-  const n = images.length;
-  const randIndex = Math.floor(Math.random()*n);
-  const anglePerItem = 360/n;
-  const targetAngle = 360*5 + (360 - randIndex*anglePerItem);
-  currentRotation += targetAngle;
-  roulette.style.transition = "transform 4s cubic-bezier(0.25,1,0.5,1)";
-  roulette.style.transform = `rotate(${currentRotation}deg)`;
 
-  roulette.addEventListener("transitionend", function handler() {
-    showFullPhoto(images[randIndex]);
-    roulette.removeEventListener("transitionend", handler);
-  });
+function easeOut(t) {
+  return 1 - Math.pow(1-t, 3);
+}
+
+function spin() {
+  if(images.length===0) return;
+  const n = images.length;
+  const randomExtra = Math.random() * 360;
+  const targetRotation = 360 * 5 + randomExtra;
+  const startOffset = rotationOffset;
+  const duration = 4000;
+  const startTime = performance.now();
+  const radius = roulette.offsetWidth / 2 - roulette.offsetWidth * 0.125 - 10;
+
+  function animate(time) {
+    const t = Math.min((time - startTime)/duration, 1);
+    const easedT = easeOut(t);
+    rotationOffset = startOffset + targetRotation * easedT;
+
+    images.forEach((_, i) => {
+      const img = roulette.children[i];
+      const angle = (360 / n) * i;
+
+      
+      img.style.transform = `
+        rotate(${angle + rotationOffset}deg)
+        translate(${radius}px)
+        rotate(-${angle + rotationOffset}deg)
+        translate(-50%, -50%)
+      `;
+    });
+
+    if(t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      showWinner();
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+
+function showWinner() {
+  const n = images.length;
+  const anglePerItem = 360/n;
+  const normalizedRotation = (rotationOffset % 360 + 360) % 360;
+  const winnerIndex = Math.floor((n - normalizedRotation/anglePerItem) % n);
+  showFullPhoto(images[winnerIndex]);
 }
 
 function showFullPhoto(src) {
