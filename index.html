@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Рулетка с фото для iPhone</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { 
+      display:flex; 
+      flex-direction:column;
+      justify-content:center; 
+      align-items:center; 
+      height:100vh; 
+      background:#111; 
+      margin:0; 
+      color:white;
+      font-family:sans-serif;
+    }
+    .roulette {
+      position: relative;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      border: 5px solid #fff;
+      overflow: hidden;
+      transform: rotate(0deg);
+      transition: transform 4s cubic-bezier(0.25, 1, 0.5, 1);
+      margin:20px;
+    }
+    .roulette img {
+      position: absolute;
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      transform-origin: 150px 150px;
+    }
+    button, label {
+      padding: 12px 20px;
+      font-size: 16px;
+      border:none; border-radius:10px;
+      background:#ff4444; color:#fff;
+      margin: 5px;
+      cursor:pointer;
+    }
+    input[type="file"] {
+      display:none;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Фотолента 🎡</h2>
+
+<label for="fileInput">Выбрать фото</label>
+<input type="file" id="fileInput" accept="image/*" multiple>
+
+<div class="roulette" id="roulette"></div>
+<button onclick="spin()">Крутить!</button>
+
+<script>
+  const fileInput = document.getElementById("fileInput");
+  const roulette = document.getElementById("roulette");
+  let images = [];
+  let currentRotation = 0;
+
+  fileInput.addEventListener("change", (event) => {
+    const files = Array.from(event.target.files);
+    images = [];
+    roulette.innerHTML = "";
+
+    let loadedCount = 0;
+
+    files.forEach((file, i) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        images[i] = e.target.result;
+        loadedCount++;
+        if (loadedCount === files.length) {
+          updateRoulette();
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  function updateRoulette() {
+    roulette.innerHTML = "";
+    images.forEach((src, i) => {
+      const img = document.createElement("img");
+      img.src = src;
+      const angle = (360 / images.length) * i;
+      img.style.transform = `rotate(${angle}deg) translate(100px) rotate(-${angle}deg)`;
+      roulette.appendChild(img);
+    });
+  }
+
+  function spin() {
+    if (images.length === 0) return;
+    const rand = Math.floor(Math.random() * images.length);
+    const anglePerItem = 360 / images.length;
+    const targetAngle = 360 * 5 + (360 - rand * anglePerItem);
+    currentRotation += targetAngle;
+    roulette.style.transform = `rotate(${currentRotation}deg)`;
+  }
+</script>
+
+</body>
+</html>
